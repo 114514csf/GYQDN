@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <script>
+        let delete_i = new URL(location.href)
+        delete_i.searchParams.delete('i')
+        history.pushState({}, '', delete_i.href)
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件上传</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .upload-card { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h1 { color: #333; margin-bottom: 20px; }
+        input[type="file"] { margin: 20px 0; padding: 10px; border: 1px dashed #ccc; width: 100%; box-sizing: border-box; }
+        button { background: #3498db; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; transition: 0.3s; }
+        button:hover { background: #2980b9; }
+        .note { font-size: 12px; color: #888; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="upload-card">
+        <h1>📤 文件上传</h1>
+        <!-- 注意：enctype 必须为 multipart/form-data -->
+        <form action="upload.php" method="POST" enctype="multipart/form-data">
+            <input type="file" name="upfile" required accept=".jpg,.jpeg,.png,.gif,.pdf,.txt,.zip,.mp3,.mp4,.xlsx,.ppt,.pptx,.doc,.docx">
+            <button type="submit">开始上传</button>
+        </form>
+        <p class="note">支持格式: JPG, PNG, GIF, PDF, TXT, ZIP, MP3等<br>最大大小: 20MB</p>
+        <div style="margin-top: 20px;">
+            <a href="upload.php?list=1" style="color: #666; text-decoration: none; font-size: 14px;">查看已上传文件</a>
+        </div>
+    </div>
+</body>
+</html>
+   
