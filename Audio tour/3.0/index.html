@@ -1,0 +1,119 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Rhythm</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #111; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
+        .lane { border-right: 1px solid #333; position: relative; height: 100%; transition: background 0.1s; }
+        .lane:last-child { border-right: none; }
+        .lane.hit { background: rgba(255, 255, 255, 0.1); }
+        .note { position: absolute; width: 100%; height: 20px; background: #fff; box-shadow: 0 0 10px #fff; }
+        .line { position: absolute; bottom: 10%; width: 100%; height: 2px; background: #0ff; box-shadow: 0 0 10px #0ff; }
+        .key-hint { position: absolute; bottom: 2%; width: 100%; text-align: center; opacity: 0.5; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center">
+
+    <!-- UI Layer -->
+    <div id="ui" class="absolute top-10 text-center z-10">
+        <h1 class="text-4xl font-bold mb-2 tracking-widest">MINIMAL</h1>
+        <div class="text-xl">Score: <span id="score">0</span></div>
+        <div class="text-sm text-gray-500 mt-2">Press D F J K to Play</div>
+    </div>
+
+    <!-- Game Area -->
+    <div id="game" class="w-full max-w-md h-[80vh] bg-black border-x border-gray-800 relative flex">
+        <div class="line"></div>
+        
+        <!-- Lanes -->
+        <div class="lane flex-1" data-key="d"><div class="key-hint">D</div></div>
+        <div class="lane flex-1" data-key="f"><div class="key-hint">F</div></div>
+        <div class="lane flex-1" data-key="j"><div class="key-hint">J</div></div>
+        <div class="lane flex-1" data-key="k"><div class="key-hint">K</div></div>
+    </div>
+
+    <script>
+        const lanes = document.querySelectorAll('.lane');
+        const scoreEl = document.getElementById('score');
+        const gameArea = document.getElementById('game');
+        let score = 0;
+        let notes = [];
+        let isPlaying = true;
+        const speed = 5;
+        const spawnRate = 40; // frames
+        let frame = 0;
+        const lineY = gameArea.offsetHeight * 0.9; // 10% from bottom
+
+        function createNote() {
+            const laneIdx = Math.floor(Math.random() * 4);
+            const note = document.createElement('div');
+            note.className = 'note';
+            note.style.top = '-20px';
+            note.dataset.lane = laneIdx;
+            note.dataset.y = -20;
+            lanes[laneIdx].appendChild(note);
+            notes.push({ el: note, y: -20, lane: laneIdx, active: true });
+        }
+
+        function update() {
+            if (!isPlaying) return;
+            frame++;
+            if (frame % spawnRate === 0) createNote();
+
+            notes.forEach((n, i) => {
+                if (!n.active) return;
+                n.y += speed;
+                n.el.style.top = n.y + 'px';
+
+                // Miss detection
+                if (n.y > lineY + 50) {
+                    n.active = false;
+                    n.el.remove();
+                    score = Math.max(0, score - 10);
+                    updateScore();
+                }
+            });
+
+            // Cleanup
+            notes = notes.filter(n => n.active);
+            requestAnimationFrame(update);
+        }
+
+        function updateScore() {
+            scoreEl.innerText = score;
+        }
+
+        function handleInput(key, isDown) {
+            const map = { 'd': 0, 'f': 1, 'j': 2, 'k': 3 };
+            const idx = map[key.toLowerCase()];
+            if (idx === undefined) return;
+
+            const lane = lanes[idx];
+            if (isDown) {
+                lane.classList.add('hit');
+                // Hit detection
+                const hitNote = notes.find(n => n.lane === idx && n.active && Math.abs(n.y - (lineY - 20)) < 40);
+                if (hitNote) {
+                    hitNote.active = false;
+                    hitNote.el.style.background = '#0ff';
+                    hitNote.el.style.boxShadow = '0 0 20px #0ff';
+                    setTimeout(() => hitNote.el.remove(), 100);
+                    score += 100;
+                    updateScore();
+                }
+            } else {
+                lane.classList.remove('hit');
+            }
+        }
+
+        window.addEventListener('keydown', e => handleInput(e.key, true));
+        window.addEventListener('keyup', e => handleInput(e.key, false));
+
+        update();
+    </script>
+</body>
+</html>
