@@ -1,0 +1,42 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <script>
+        let delete_i = new URL(location.href)
+        delete_i.searchParams.delete('i')
+        history.pushState({}, '', delete_i.href)
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 - 禁止访问</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
+        body { font-family: 'Noto Sans SC', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+
+    <div class="text-center max-w-md w-full bg-white p-8 rounded-xl shadow-sm border-l-4 border-red-500">
+        <div class="mb-6 text-red-500">
+            <i class="fa-solid fa-lock text-6xl"></i>
+        </div>
+        
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">403</h1>
+        <h2 class="text-xl font-semibold text-gray-600 mb-4">禁止访问</h2>
+        <p class="text-gray-500 mb-8">
+            您没有权限查看此页面。<br>请检查您的登录状态或联系管理员。
+        </p>
+
+        <div class="flex flex-col gap-3">
+            
+            <a href="/" class="w-full py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
+                返回首页
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>
