@@ -1,0 +1,11 @@
+RewriteEngine On
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:CF-Visitor} !{"scheme":"https"}
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+#RewriteCond %{QUERY_STRING} ^i=1$ [NC]
+#RewriteRule ^(.*)$ /$1? [R=301,L]
+
+ErrorDocument 404 /error/404.php?i=1
+ErrorDocument 403 /error/403.php?i=1
