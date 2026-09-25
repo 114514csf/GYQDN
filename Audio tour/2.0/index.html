@@ -1,0 +1,554 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Rhythm - HTML5 音乐游戏</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #0f172a;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* 游戏轨道样式 */
+        .game-lane {
+            position: relative;
+            height: 100%;
+            border-right: 2px solid rgba(255, 255, 255, 0.1);
+            transition: background-color 0.1s;
+        }
+        
+        .game-lane:last-child {
+            border-right: none;
+        }
+
+        .game-lane.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+        /* 音符样式 */
+        .note {
+            position: absolute;
+            width: 100%;
+            height: 60px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px currentColor;
+            z-index: 10;
+            transform: translateY(-100%); /* 初始位置在上方 */
+        }
+
+        /* 判定线 */
+        .judge-line {
+            position: absolute;
+            bottom: 100px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #0ea5e9, transparent);
+            box-shadow: 0 0 15px #0ea5e9;
+            z-index: 20;
+        }
+
+        /* 按键提示区域 */
+        .key-hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        /* 连击特效 */
+        .combo-text {
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* 背景动画 */
+        .bg-grid {
+            background-image: 
+                linear-gradient(rgba(14, 165, 233, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(14, 165, 233, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            perspective: 500px;
+            transform-style: preserve-3d;
+            animation: moveGrid 20s linear infinite;
+        }
+
+        @keyframes moveGrid {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 40px; }
+        }
+
+        /* 自定义滚动条隐藏 */
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col text-white">
+
+    <!-- 头部导航 / 状态栏 -->
+    <header class="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-700 flex items-center justify-between px-6 z-50">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-music text-cyan-400 text-2xl animate-pulse"></i>
+            <h1 class="text-xl font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500">NEON RHYTHM</h1>
+        </div>
+        
+        <div class="flex items-center gap-8">
+            <div class="text-center">
+                <p class="text-xs text-slate-400 uppercase">Score</p>
+                <p id="score-display" class="text-2xl font-bold text-yellow-400">000000</p>
+            </div>
+            <div class="text-center">
+                <p class="text-xs text-slate-400 uppercase">Combo</p>
+                <p id="combo-display" class="text-2xl font-bold text-cyan-400">0</p>
+            </div>
+            <div class="text-center">
+                <p class="text-xs text-slate-400 uppercase">Accuracy</p>
+                <p id="accuracy-display" class="text-2xl font-bold text-green-400">100%</p>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button id="btn-settings" class="p-2 rounded-full hover:bg-slate-700 transition"><i class="fa-solid fa-gear"></i></button>
+            <button id="btn-pause" class="p-2 rounded-full hover:bg-slate-700 transition hidden"><i class="fa-solid fa-pause"></i></button>
+        </div>
+    </header>
+
+    <!-- 游戏主区域 -->
+    <main class="flex-1 relative overflow-hidden bg-grid">
+        <!-- 游戏容器 -->
+        <div id="game-container" class="absolute inset-0 flex justify-center items-end pb-0">
+            <!-- 轨道区域 (4轨) -->
+            <div id="lanes-container" class="w-full max-w-2xl h-full flex border-x-2 border-slate-700 bg-slate-900/50 backdrop-blur-sm relative">
+                <!-- 判定线 -->
+                <div class="judge-line"></div>
+
+                <!-- 动态生成轨道 -->
+                <div class="game-lane flex-1" data-key="d">
+                    <div class="key-hint">D</div>
+                </div>
+                <div class="game-lane flex-1" data-key="f">
+                    <div class="key-hint">F</div>
+                </div>
+                <div class="game-lane flex-1" data-key="j">
+                    <div class="key-hint">J</div>
+                </div>
+                <div class="game-lane flex-1" data-key="k">
+                    <div class="key-hint">K</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 反馈文字层 -->
+        <div id="feedback-layer" class="absolute inset-0 pointer-events-none flex justify-center items-center z-30">
+            <div id="feedback-text" class="text-4xl font-black italic opacity-0 transition-all duration-100 transform scale-150"></div>
+        </div>
+    </main>
+
+    <!-- 开始/结束 模态框 -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="bg-slate-800 p-8 rounded-2xl border border-slate-600 shadow-2xl max-w-md w-full text-center transform transition-all scale-100">
+            <h2 id="modal-title" class="text-3xl font-bold mb-2 text-white">准备开始</h2>
+            <p id="modal-desc" class="text-slate-400 mb-6">使用键盘 D, F, J, K 键跟随节奏击中音符。</p>
+            
+            <div id="result-stats" class="hidden grid grid-cols-2 gap-4 mb-6 text-left bg-slate-900/50 p-4 rounded-lg">
+                <div>
+                    <span class="text-slate-400 text-sm">Perfect</span>
+                    <div id="stat-perfect" class="text-yellow-400 font-bold">0</div>
+                </div>
+                <div>
+                    <span class="text-slate-400 text-sm">Good</span>
+                    <div id="stat-good" class="text-cyan-400 font-bold">0</div>
+                </div>
+                <div>
+                    <span class="text-slate-400 text-sm">Miss</span>
+                    <div id="stat-miss" class="text-red-400 font-bold">0</div>
+                </div>
+                <div>
+                    <span class="text-slate-400 text-sm">Max Combo</span>
+                    <div id="stat-max-combo" class="text-purple-400 font-bold">0</div>
+                </div>
+            </div>
+
+            <button id="btn-start" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-lg shadow-lg shadow-cyan-500/30 transition-all transform hover:scale-105 active:scale-95">
+                START GAME
+            </button>
+        </div>
+    </div>
+
+    <!-- 音频元素 (使用示例音频，实际项目中应替换为本地资源或CDN) -->
+    <!-- 注意：为了演示效果，这里使用一个免费的鼓点循环音频 -->
+    <audio id="bgm" preload="auto" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=cyberpunk-city-110287.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        /**
+         * 游戏配置与状态管理
+         */
+        const CONFIG = {
+            laneCount: 4,
+            keys: ['d', 'f', 'j', 'k'],
+            noteSpeed: 5, // 像素/帧
+            spawnRate: 60, // 每多少帧生成一个音符 (基础值)
+            judgeLineY: 0, // 将在init中计算
+            hitWindow: {
+                perfect: 30, // 像素误差范围
+                good: 60,
+                miss: 100
+            },
+            colors: ['#ef4444', '#22c55e', '#3b82f6', '#eab308'] // 红绿蓝黄对应4个轨道
+        };
+
+        const STATE = {
+            isPlaying: false,
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            notes: [], // 存储当前屏幕上的音符对象 { element, lane, y, hit }
+            stats: { perfect: 0, good: 0, miss: 0 },
+            frameCount: 0,
+            audioContext: null,
+            bgm: document.getElementById('bgm')
+        };
+
+        // DOM 元素引用
+        const lanesContainer = document.getElementById('lanes-container');
+        const lanes = document.querySelectorAll('.game-lane');
+        const scoreEl = document.getElementById('score-display');
+        const comboEl = document.getElementById('combo-display');
+        const accuracyEl = document.getElementById('accuracy-display');
+        const feedbackEl = document.getElementById('feedback-text');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const btnStart = document.getElementById('btn-start');
+        const modalTitle = document.getElementById('modal-title');
+        const modalDesc = document.getElementById('modal-desc');
+        const resultStats = document.getElementById('result-stats');
+
+        /**
+         * 初始化游戏
+         */
+        function init() {
+            // 计算判定线相对于容器顶部的Y坐标
+            // 判定线在 bottom: 100px，容器高度是动态的
+            const containerHeight = lanesContainer.offsetHeight;
+            CONFIG.judgeLineY = containerHeight - 100;
+
+            // 绑定事件
+            window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('keyup', handleKeyUp);
+            btnStart.addEventListener('click', startGame);
+            
+            // 窗口大小改变时重新计算判定线位置
+            window.addEventListener('resize', () => {
+                const h = lanesContainer.offsetHeight;
+                CONFIG.judgeLineY = h - 100;
+            });
+        }
+
+        /**
+         * 开始游戏逻辑
+         */
+        async function startGame() {
+            resetGame();
+            STATE.isPlaying = true;
+            
+            // UI 更新
+            modalOverlay.classList.add('hidden');
+            document.getElementById('btn-pause').classList.remove('hidden');
+            
+            // 播放音乐
+            try {
+                await STATE.bgm.play();
+            } catch (e) {
+                console.warn("Audio play failed (interaction required):", e);
+            }
+
+            // 启动游戏循环
+            requestAnimationFrame(gameLoop);
+        }
+
+        /**
+         * 重置游戏状态
+         */
+        function resetGame() {
+            STATE.score = 0;
+            STATE.combo = 0;
+            STATE.maxCombo = 0;
+            STATE.stats = { perfect: 0, good: 0, miss: 0 };
+            STATE.notes.forEach(note => note.element.remove());
+            STATE.notes = [];
+            STATE.frameCount = 0;
+            
+            updateUI();
+            
+            // 清除所有轨道上的active状态
+            lanes.forEach(lane => lane.classList.remove('active'));
+        }
+
+        /**
+         * 游戏主循环
+         */
+        function gameLoop() {
+            if (!STATE.isPlaying) return;
+
+            STATE.frameCount++;
+
+            // 1. 生成音符
+            // 简单的节奏生成逻辑：根据帧数取模
+            // 随着分数增加，难度略微提升（生成频率加快）
+            let currentSpawnRate = CONFIG.spawnRate;
+            if (STATE.score > 1000) currentSpawnRate = 50;
+            if (STATE.score > 3000) currentSpawnRate = 40;
+
+            if (STATE.frameCount % currentSpawnRate === 0) {
+                spawnNote();
+            }
+
+            // 2. 更新音符位置
+            updateNotes();
+
+            // 3. 清理超出屏幕的音符
+            cleanupNotes();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        /**
+         * 生成音符
+         */
+        function spawnNote() {
+            const laneIndex = Math.floor(Math.random() * CONFIG.laneCount);
+            const lane = lanes[laneIndex];
+            
+            const noteEl = document.createElement('div');
+            noteEl.className = 'note';
+            noteEl.style.backgroundColor = CONFIG.colors[laneIndex];
+            noteEl.style.color = CONFIG.colors[laneIndex]; // 用于box-shadow currentColor
+            
+            // 初始位置在顶部
+            noteEl.style.top = '-60px'; 
+            
+            lane.appendChild(noteEl);
+
+            STATE.notes.push({
+                element: noteEl,
+                lane: laneIndex,
+                y: -60,
+                hit: false
+            });
+        }
+
+        /**
+         * 更新所有音符位置
+         */
+        function updateNotes() {
+            STATE.notes.forEach(note => {
+                if (note.hit) return;
+
+                note.y += CONFIG.noteSpeed;
+                note.element.style.transform = `translateY(${note.y}px)`;
+
+                // 自动Miss检测 (如果超过判定线太多)
+                if (note.y > CONFIG.judgeLineY + CONFIG.hitWindow.miss) {
+                    triggerFeedback('MISS', 'text-red-500');
+                    note.hit = true;
+                    note.element.style.opacity = '0.5';
+                    note.element.style.backgroundColor = '#555';
+                    resetCombo();
+                    STATE.stats.miss++;
+                    updateUI();
+                }
+            });
+        }
+
+        /**
+         * 清理已击中或超出屏幕的音符DOM
+         */
+        function cleanupNotes() {
+            // 过滤出还需要保留的音符
+            const activeNotes = STATE.notes.filter(note => {
+                if (note.hit && note.y > CONFIG.judgeLineY + 200) {
+                    note.element.remove();
+                    return false;
+                }
+                return true;
+            });
+            STATE.notes = activeNotes;
+        }
+
+        /**
+         * 键盘按下处理
+         */
+        function handleKeyDown(e) {
+            if (!STATE.isPlaying) return;
+            
+            const key = e.key.toLowerCase();
+            const laneIndex = CONFIG.keys.indexOf(key);
+
+            if (laneIndex !== -1) {
+                // 视觉反馈：轨道高亮
+                lanes[laneIndex].classList.add('active');
+                
+                // 判定逻辑
+                checkHit(laneIndex);
+            }
+        }
+
+        /**
+         * 键盘抬起处理
+         */
+        function handleKeyUp(e) {
+            const key = e.key.toLowerCase();
+            const laneIndex = CONFIG.keys.indexOf(key);
+            if (laneIndex !== -1) {
+                lanes[laneIndex].classList.remove('active');
+            }
+        }
+
+        /**
+         * 判定逻辑
+         */
+        function checkHit(laneIndex) {
+            // 找到该轨道上最接近判定线的未击中音符
+            // 排序：y值最大的（最下面的）优先
+            const candidates = STATE.notes.filter(n => n.lane === laneIndex && !n.hit);
+            
+            if (candidates.length === 0) return;
+
+            // 按Y坐标降序排列，取第一个（最接近底部的）
+            candidates.sort((a, b) => b.y - a.y);
+            const targetNote = candidates[0];
+
+            const distance = Math.abs(targetNote.y - CONFIG.judgeLineY);
+
+            if (distance <= CONFIG.hitWindow.perfect) {
+                registerHit(targetNote, 'PERFECT', 'text-yellow-400', 100);
+            } else if (distance <= CONFIG.hitWindow.good) {
+                registerHit(targetNote, 'GOOD', 'text-cyan-400', 50);
+            } else if (distance <= CONFIG.hitWindow.miss) {
+                // 在Miss范围内但没到Perfect/Good，算Miss还是Bad？这里简化为Miss
+                registerHit(targetNote, 'BAD', 'text-orange-400', 10);
+            }
+            // 超出范围则不响应（防止误触太远的音符）
+        }
+
+        /**
+         * 注册击中结果
+         */
+        function registerHit(note, type, colorClass, points) {
+            note.hit = true;
+            
+            // 视觉消失效果
+            note.element.style.transition = 'all 0.1s';
+            note.element.style.transform = `translateY(${note.y}px) scale(1.5)`;
+            note.element.style.opacity = '0';
+
+            // 更新数据
+            STATE.score += points * (1 + STATE.combo * 0.01); // 连击加分
+            STATE.stats[type.toLowerCase()]++;
+            
+            if (type === 'BAD' || type === 'MISS') {
+                resetCombo();
+            } else {
+                STATE.combo++;
+                if (STATE.combo > STATE.maxCombo) STATE.maxCombo = STATE.combo;
+            }
+
+            triggerFeedback(type, colorClass);
+            updateUI();
+        }
+
+        /**
+         * 重置连击
+         */
+        function resetCombo() {
+            STATE.combo = 0;
+        }
+
+        /**
+         * 显示反馈文字
+         */
+        function triggerFeedback(text, colorClass) {
+            feedbackEl.innerText = text;
+            feedbackEl.className = `text-4xl font-black italic ${colorClass} combo-text`;
+            
+            // 重置动画
+            feedbackEl.style.opacity = '1';
+            feedbackEl.style.transform = 'scale(1.2)';
+            
+            setTimeout(() => {
+                feedbackEl.style.opacity = '0';
+                feedbackEl.style.transform = 'scale(1)';
+            }, 300);
+        }
+
+        /**
+         * 更新界面显示
+         */
+        function updateUI() {
+            scoreEl.innerText = Math.floor(STATE.score).toString().padStart(6, '0');
+            comboEl.innerText = STATE.combo;
+            
+            const totalHits = STATE.stats.perfect + STATE.stats.good + STATE.stats.bad + STATE.stats.miss;
+            const accuracy = totalHits === 0 ? 100 : Math.floor(((STATE.stats.perfect * 100 + STATE.stats.good * 50 + STATE.stats.bad * 10) / (totalHits * 100)) * 100);
+            accuracyEl.innerText = accuracy + '%';
+        }
+
+        /**
+         * 游戏结束逻辑 (模拟：当音乐停止或手动停止)
+         * 这里为了演示，我们添加一个监听音乐结束的事件，或者可以做一个倒计时
+         */
+        STATE.bgm.addEventListener('ended', () => {
+            endGame();
+        });
+
+        // 为了演示方便，提供一个手动结束游戏的接口（比如按Esc）
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && STATE.isPlaying) {
+                endGame();
+            }
+        });
+
+        function endGame() {
+            STATE.isPlaying = false;
+            STATE.bgm.pause();
+            STATE.bgm.currentTime = 0;
+
+            modalTitle.innerText = "GAME OVER";
+            modalDesc.innerText = "最终结算";
+            btnStart.innerText = "RESTART";
+            
+            // 显示详细数据
+            resultStats.classList.remove('hidden');
+            document.getElementById('stat-perfect').innerText = STATE.stats.perfect;
+            document.getElementById('stat-good').innerText = STATE.stats.good;
+            document.getElementById('stat-miss').innerText = STATE.stats.miss;
+            document.getElementById('stat-max-combo').innerText = STATE.maxCombo;
+
+            modalOverlay.classList.remove('hidden');
+            document.getElementById('btn-pause').classList.add('hidden');
+        }
+
+        // 启动初始化
+        init();
+
+    </script>
+</body>
+</html>
