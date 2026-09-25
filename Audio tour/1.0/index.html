@@ -1,0 +1,310 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Beats - Web Rhythm Game</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 自定义动画与样式 */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #0f172a;
+            overflow: hidden;
+            touch-action: none; /* 禁止移动端默认触摸行为 */
+        }
+
+        /* 游戏容器 */
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+        }
+
+        /* 轨道区域 */
+        #track-area {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 100%;
+            border-left: 2px solid rgba(56, 189, 248, 0.3);
+            border-right: 2px solid rgba(56, 189, 248, 0.3);
+            background: rgba(15, 23, 42, 0.8);
+            box-shadow: 0 0 50px rgba(56, 189, 248, 0.1);
+            overflow: hidden;
+        }
+
+        /* 判定线 */
+        #judgment-line {
+            position: absolute;
+            bottom: 15%;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+            box-shadow: 0 0 15px #38bdf8;
+            z-index: 10;
+        }
+
+        /* 按键区域 */
+        .key-zone {
+            position: absolute;
+            bottom: 0;
+            height: 15%;
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            z-index: 20;
+        }
+
+        .key {
+            flex: 1;
+            margin: 0 2px;
+            background: rgba(255, 255, 255, 0.1);
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .key.active {
+            background: rgba(56, 189, 248, 0.4);
+            border-top-color: #38bdf8;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+            transform: translateY(-5px);
+        }
+
+        /* 音符样式 */
+        .note {
+            position: absolute;
+            width: 23%; /* 4轨，留间隙 */
+            height: 20px;
+            background: #f472b6;
+            border-radius: 4px;
+            box-shadow: 0 0 10px #f472b6;
+            z-index: 5;
+            will-change: top;
+        }
+
+        .note.long {
+            height: 60px;
+            background: linear-gradient(to bottom, #f472b6, #c026d3);
+        }
+
+        /* 判定特效文字 */
+        .judge-text {
+            position: absolute;
+            left: 50%;
+            top: 40%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: 900;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 30;
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        @keyframes popUp {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .animate-pop {
+            animation: popUp 0.5s ease-out forwards;
+        }
+
+        /* UI 覆盖层 */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .combo-display {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .combo-display.show {
+            opacity: 1;
+        }
+
+        .combo-count {
+            font-size: 4rem;
+            font-weight: 900;
+            background: linear-gradient(to bottom, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .combo-label {
+            font-size: 1rem;
+            letter-spacing: 5px;
+            color: #94a3b8;
+        }
+
+        /* 菜单模态框 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+            border: none;
+            padding: 15px 40px;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.7);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 游戏主容器 -->
+    <div id="game-container">
+        <!-- 轨道区域 -->
+        <div id="track-area">
+            <!-- 判定线 -->
+            <div id="judgment-line"></div>
+            
+            <!-- 按键区域 (4轨) -->
+            <div class="key-zone">
+                <div class="key" data-key="0">D</div>
+                <div class="key" data-key="1">F</div>
+                <div class="key" data-key="2">J</div>
+                <div class="key" data-key="3">K</div>
+            </div>
+
+            <!-- 音符将通过JS动态插入这里 -->
+            <div id="notes-layer"></div>
+        </div>
+
+        <!-- HUD 界面 -->
+        <div class="ui-layer">
+            <div class="hud-top">
+                <div>
+                    <div class="text-sm text-gray-400">SCORE</div>
+                    <div id="score-display" class="text-2xl font-bold">000000</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-400">ACCURACY</div>
+                    <div id="accuracy-display" class="text-2xl font-bold text-cyan-400">100.00%</div>
+                </div>
+            </div>
+
+            <!-- 连击显示 -->
+            <div id="combo-container" class="combo-display">
+                <div id="combo-count" class="combo-count">0</div>
+                <div class="combo-label">COMBO</div>
+            </div>
+
+            <!-- 判定反馈文字 -->
+            <div id="judge-feedback" class="judge-text">PERFECT</div>
+        </div>
+    </div>
+
+    <!-- 开始菜单 -->
+    <div id="start-menu" class="modal">
+        <div class="text-center">
+            <h1 class="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600 mb-4" style="filter: drop-shadow(0 0 10px rgba(56,189,248,0.5));">NEON BEATS</h1>
+            <p class="text-gray-300 mb-8 text-lg">使用键盘 D F J K 或点击屏幕下方区域</p>
+            <button id="start-btn" class="btn-primary">START GAME</button>
+        </div>
+    </div>
+
+    <!-- 结算界面 -->
+    <div id="result-screen" class="modal hidden">
+        <div class="bg-slate-800 p-8 rounded-2xl border border-slate-600 shadow-2xl text-center max-w-md w-full">
+            <h2 class="text-3xl font-bold text-white mb-6">RESULT</h2>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-slate-700 p-4 rounded-lg">
+                    <div class="text-gray-400 text-sm">SCORE</div>
+                    <div id="final-score" class="text-2xl font-bold text-white">0</div>
+                </div>
+                <div class="bg-slate-700 p-4 rounded-lg">
+                    <div class="text-gray-400 text-sm">MAX COMBO</div>
+                    <div id="final-combo" class="text-2xl font-bold text-yellow-400">0</div>
+                </div>
+                <div class="bg-slate-700 p-4 rounded-lg">
+                    <div class="text-gray-400 text-sm">PERFECT</div>
+                    <div id="count-perfect" class="text-xl font-bold text-cyan-400">0</div>
+                </div>
+                <div class="bg-slate-700 p-4 rounded-lg">
+                    <div class="text-gray-400 text-sm">MISS</div>
+                    <div id="count-miss" class="text-xl font-bold text-red-400">0</div>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <div class="text-sm text-gray-400 mb-1">ACCURACY</div>
+                <div id="final-accuracy" class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-500">0.00%</div>
+            </div>
+
+            <button id="restart-btn" class="btn-primary w-full">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
